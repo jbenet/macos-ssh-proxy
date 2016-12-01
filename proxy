@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# macOS ssh proxy script
+#
+# install at: /usr/bin/proxy or something in your path.
+# usage:
+#   proxy                # use default hostname, default interface
+#   proxy foo.com        # use foo.com host, default interface
+#   proxy foo.com Wi-Fi  # use foo.com host, Wi-Fi interface
+#
+# by https://github.com/jbenet
+# MIT License
+#
+
+host=default-hostname.com # default machine hostname
+port=5901      # default port to use.
+iface="Wi-Fi"  # default interface to update. can tweak script to do it for all.
+
+usage() {
+  echo "usage: $0 [<host>] [<iface>]"
+  echo "turn ssh + socks proxy on or off"
+  exit 1
+}
+
+die() {
+  echo "error: $@"
+  exit 1
+}
+
+if [[ "$1" = "-h" || "$1" = "--help" ]]; then
+  usage
+fi
+
+if [ $# -ge 1 ]; then
+  host="$1"
+fi
+
+if [ $# -ge 2 ]; then
+  iface="$2"
+fi
+
+# setup proxy
+echo "logging into $host"
+ssh -nND "$port" "$host" &
+sid="$!"
+
+kill -0 "$!" || die "failed to log into $host"
+
+cleanup() {
+  echo stopping
+  kill "$sid"
+  networksetup -setsocksfirewallproxystate "$iface" off; exit
+}
+
+trap cleanup SIGINT SIGTERM
+
+# use proxy
+echo "proxying all $iface http requests through $host"
+networksetup -setsocksfirewallproxy "$iface" "localhost" "$port"
+
+# wait forever
+echo ""
+echo "WARNING:  If you change networks or something breaks,"
+echo "          restart this program. I run into problems all"
+echo "          the time and haven't bothered to fix them."
+echo ""
+echo "enter ^C to stop"
+tail -f /dev/null
