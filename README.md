@@ -1,4 +1,4 @@
-# proxy - simple macos ssh proxy
+# proxy - simple macos ssh http proxy
 
 ## Install
 
